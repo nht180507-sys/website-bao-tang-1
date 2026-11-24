@@ -1108,6 +1108,26 @@
     const DEFAULT_CAM_POS = new THREE.Vector3(0.28, 0.72, 4.35);
     const DEFAULT_TARGET = new THREE.Vector3(-0.04, 0.08, 0.0);
 
+    // Dynamically calculate camera position so the entire vessel + spout fits comfortably on narrow mobile screens
+    function getDefaultCamPos(width, height) {
+      const container = document.getElementById('canvas-container');
+      const w = width || (container ? container.clientWidth : window.innerWidth);
+      const h = height || (container ? container.clientHeight : window.innerHeight);
+      const aspect = w / h;
+
+      const baseOffset = DEFAULT_CAM_POS.clone().sub(DEFAULT_TARGET);
+      let scale = 1.0;
+
+      if (aspect < 1.0) {
+        const vFovRad = THREE.MathUtils.degToRad(44);
+        const desiredVisibleWidth = 4.4; // Vessel + spout width (~3.45) plus comfortable side margins
+        const requiredDist = desiredVisibleWidth / (2 * Math.tan(vFovRad / 2) * Math.max(aspect, 0.42));
+        scale = Math.max(1.25, requiredDist / baseOffset.length());
+      }
+
+      return DEFAULT_TARGET.clone().add(baseOffset.multiplyScalar(scale));
+    }
+
     function init3DViewer() {
       const container = document.getElementById('canvas-container');
       const width = container.clientWidth || window.innerWidth;
@@ -1118,10 +1138,7 @@
       // Responsive FOV slightly wider on portrait mobile so the whole vessel fits comfortably
       const isPortrait = height > width;
       camera = new THREE.PerspectiveCamera(isPortrait ? 44 : 36, width / height, 0.1, 100);
-      camera.position.copy(DEFAULT_CAM_POS);
-      if (isPortrait) {
-        camera.position.multiplyScalar(1.22);
-      }
+      camera.position.copy(getDefaultCamPos(width, height));
 
       renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -1178,7 +1195,7 @@
       controls.rotateSpeed = 0.85;
       controls.zoomSpeed = 0.85;
       controls.minDistance = 2.1;
-      controls.maxDistance = 8.5;
+      controls.maxDistance = 16.0;
       controls.minPolarAngle = 0.0;        // Can inspect directly from above
       controls.maxPolarAngle = Math.PI;    // Can inspect directly from underneath
       controls.autoRotate = isAutoRotate;
@@ -1215,13 +1232,6 @@
 
     // Smooth spherical camera reset state (prevents sudden zoom-in & auto-rotate conflict)
     let resetState = null;
-
-    function getDefaultCamPos() {
-      const container = document.getElementById('canvas-container');
-      const w = container ? container.clientWidth : window.innerWidth;
-      const h = container ? container.clientHeight : window.innerHeight;
-      return DEFAULT_CAM_POS.clone().multiplyScalar(h > w ? 1.22 : 1.0);
-    }
 
     function cancelCameraReset() {
       if (resetState) {
