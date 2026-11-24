@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ấm Gốm Cổ Có Vòi — Trưng Bày Hiện Vật 3D</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Import Map for Three.js ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #161616;
+      color: #f3f0ec;
+      overflow-x: hidden;
+    }
+
+    /* Museum studio radial background for the 3D showcase */
+    #viewer-section {
+      background: radial-gradient(circle at 50% 45%, #2b2927 0%, #1d1c1b 48%, #121212 100%);
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      cursor: grab;
+    }
+
+    #canvas-container canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Subtle glassmorphism for museum UI controls */
+    .glass-panel {
+      background: rgba(24, 23, 22, 0.72);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 245, 235, 0.1);
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #141414;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a3531;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #524a44;
+    }
+
+    /* Gentle bounce animation for scroll indicator */
+    @keyframes gentleBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(4px); }
+    }
+    .animate-gentle-bounce {
+      animation: gentleBounce 2.2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-amber-700/40 selection:text-amber-100">
+
+  <!-- ==================== TOP NAVIGATION OVERLAY ==================== -->
+  <header class="fixed top-0 left-0 right-0 z-50 pointer-events-none px-4 py-4 sm:px-6 sm:py-5">
+    <div class="max-w-7xl mx-auto flex items-start justify-between gap-4">
+      <!-- Top-Left: Minimal Artifact Title -->
+      <div class="pointer-events-auto glass-panel rounded-2xl px-4 py-2.5 shadow-lg">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500/90 shadow-[0_0_8px_rgba(245,158,11,0.7)]"></span>
+          <div>
+            <h1 id="nav-title" class="text-sm sm:text-base font-semibold tracking-tight text-stone-100 leading-tight">
+              Ấm Gốm Cổ Có Vòi
+            </h1>
+            <p id="nav-subtitle" class="text-[11px] sm:text-xs text-stone-400 leading-tight mt-0.5">
+              Hiện vật đất nung phục chế
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top-Right: 5-Language Selector Dropdown -->
+      <div class="pointer-events-auto relative" id="lang-dropdown-wrapper">
+        <button
+          id="lang-toggle-btn"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          class="glass-panel hover:bg-stone-800/85 active:scale-[0.98] transition-all duration-200 rounded-2xl px-3.5 py-2.5 flex items-center gap-2.5 text-sm font-medium text-stone-100 shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+        >
+          <span id="current-lang-flag" class="text-base leading-none">🇻🇳</span>
+          <span id="current-lang-label" class="hidden xs:inline sm:inline">Tiếng Việt</span>
+          <span id="current-lang-code" class="sm:hidden text-xs font-semibold uppercase text-stone-300">VI</span>
+          <svg id="lang-chevron" class="w-4 h-4 text-stone-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div
+          id="lang-menu"
+          role="listbox"
+          class="hidden absolute right-0 mt-2 w-48 glass-panel rounded-2xl p-1.5 shadow-2xl border border-stone-700/60 origin-top-right transition-all duration-150"
+        >
+          <button type="button" data-lang="vi" class="lang-option w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-stone-700/60">
+            <span class="flex items-center gap-2.5"><span class="text-base">🇻🇳</span><span>Tiếng Việt</span></span>
+            <span class="text-[11px] font-mono text-stone-400">VI</span>
+          </button>
+          <button type="button" data-lang="en" class="lang-option w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-stone-700/60">
+            <span class="flex items-center gap-2.5"><span class="text-base">🇬🇧</span><span>English</span></span>
+            <span class="text-[11px] font-mono text-stone-400">EN</span>
+          </button>
+          <button type="button" data-lang="ja" class="lang-option w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-stone-700/60">
+            <span class="flex items-center gap-2.5"><span class="text-base">🇯🇵</span><span>日本語</span></span>
+            <span class="text-[11px] font-mono text-stone-400">JA</span>
+          </button>
+          <button type="button" data-lang="ko" class="lang-option w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-stone-700/60">
+            <span class="flex items-center gap-2.5"><span class="text-base">🇰🇷</span><span>한국어</span></span>
+            <span class="text-[11px] font-mono text-stone-400">KO</span>
+          </button>
+          <button type="button" data-lang="zh" class="lang-option w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-stone-700/60">
+            <span class="flex items-center gap-2.5"><span class="text-base">🇨🇳</span><span>中文</span></span>
+            <span class="text-[11px] font-mono text-stone-400">ZH</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== FIRST SCREEN: FULL-BLEED 3D VIEWER ==================== -->
+  <section id="viewer-section" class="relative w-full h-[100dvh] min-h-[540px] overflow-hidden select-none">
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Subtle Interaction Hint (Top-center on desktop, hidden when interacting) -->
+    <div id="interaction-hint" class="pointer-events-none absolute top-20 sm:top-6 left-1/2 -translate-x-1/2 z-20 transition-opacity duration-500">
+      <div class="glass-panel rounded-full px-3.5 py-1.5 flex items-center gap-2 text-xs text-stone-300 shadow-md whitespace-nowrap">
+        <svg class="w-3.5 h-3.5 text-amber-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span id="hint-text">Kéo để xoay 360° • Cuộn để phóng to</span>
+      </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loader-overlay" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#181716] transition-opacity duration-500">
+      <div class="w-10 h-10 rounded-full border-2 border-stone-700 border-t-amber-500 animate-spin mb-3"></div>
+      <p id="loading-text" class="text-xs tracking-wider uppercase text-stone-400">Đang khởi tạo mô hình 3D...</p>
+    </div>
+
+    <!-- Floating Bottom Controls Bar & Scroll Prompt -->
+    <div class="absolute bottom-5 left-0 right-0 z-20 px-4 pointer-events-none">
+      <div class="max-w-3xl mx-auto flex flex-col items-center gap-3">
+        <!-- Control Buttons -->
+        <div class="pointer-events-auto glass-panel rounded-full p-1.5 flex items-center gap-1.5 shadow-xl">
+          <button
+            id="btn-autorotate"
+            type="button"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-amber-600/25 text-amber-200 border border-amber-500/30 hover:bg-amber-600/35"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span id="btn-autorotate-label">Tự xoay: Bật</span>
+          </button>
+
+          <button
+            id="btn-reset-cam"
+            type="button"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-stone-200 hover:bg-stone-700/60 transition-all duration-200"
+          >
+            <svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span id="btn-reset-label">Góc nhìn mặc định</span>
+          </button>
+        </div>
+
+        <!-- Scroll Down Prompt -->
+        <a
+          href="#artifact-info"
+          class="pointer-events-auto group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-stone-400 hover:text-stone-100 transition-colors"
+        >
+          <span id="scroll-prompt-label">Lướt xuống xem thông tin hiện vật</span>
+          <svg class="w-3.5 h-3.5 animate-gentle-bounce text-amber-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECOND SCREEN: CONCISE ARTIFACT INFO ==================== -->
+  <main id="artifact-info" class="relative z-10 bg-[#141312] border-t border-stone-800/80">
+    <div class="max-w-4xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
+
+      <!-- Header Badge & Concise Overview -->
+      <div class="mb-10 sm:mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium tracking-wide uppercase mb-4">
+          <span id="info-badge">Hồ sơ hiện vật</span>
+        </div>
+        <h2 id="info-title" class="text-2xl sm:text-4xl font-semibold tracking-tight text-stone-100 mb-4">
+          Ấm Gốm Cổ Có Vòi
+        </h2>
+        <p id="info-description" class="text-stone-300/90 text-base sm:text-lg leading-relaxed max-w-2xl font-light">
+          Bình gốm đất nung dáng cầu dẹt, cổ ngắn miệng loe và có vòi cong nhỏ bên hông. Bề mặt mang màu đất nung tự nhiên với các vết rạn và dấu tích ghép nối phục chế đặc trưng của hiện vật khảo cổ.
+        </p>
+      </div>
+
+      <!-- Compact Specification Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Card 1: Material -->
+        <div class="rounded-2xl bg-stone-900/60 border border-stone-800/80 p-5 hover:border-stone-700/80 transition-colors">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 id="spec-material-label" class="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              Chất liệu
+            </h3>
+          </div>
+          <p id="spec-material-value" class="text-stone-100 text-sm sm:text-base font-medium pl-11">
+            Đất nung không tráng men
+          </p>
+        </div>
+
+        <!-- Card 2: Form / Structure -->
+        <div class="rounded-2xl bg-stone-900/60 border border-stone-800/80 p-5 hover:border-stone-700/80 transition-colors">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </div>
+            <h3 id="spec-form-label" class="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              Kiểu dáng
+            </h3>
+          </div>
+          <p id="spec-form-value" class="text-stone-100 text-sm sm:text-base font-medium pl-11">
+            Thân tròn dẹt, cổ ngắn, miệng loe, có vòi cong
+          </p>
+        </div>
+
+        <!-- Card 3: Condition -->
+        <div class="rounded-2xl bg-stone-900/60 border border-stone-800/80 p-5 hover:border-stone-700/80 transition-colors">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 id="spec-condition-label" class="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              Tình trạng
+            </h3>
+          </div>
+          <p id="spec-condition-value" class="text-stone-100 text-sm sm:text-base font-medium pl-11">
+            Phục chế từ mảnh vỡ, mẻ nhẹ ở vành miệng
+          </p>
+        </div>
+
+        <!-- Card 4: Era / Style -->
+        <div class="rounded-2xl bg-stone-900/60 border border-stone-800/80 p-5 hover:border-stone-700/80 transition-colors">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 id="spec-era-label" class="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              Phong cách & Niên đại
+            </h3>
+          </div>
+          <p id="spec-era-value" class="text-stone-100 text-sm sm:text-base font-medium pl-11">
+            Gốm cổ dân dụng truyền thống (tạo hình bàn xoay)
+          </p>
+        </div>
+      </div>
+
+      <!-- Minimal Footer -->
+      <div class="mt-12 pt-6 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
+        <span id="footer-note">Mô hình 3D tương tác đa chiều — Tối ưu cho máy tính và điện thoại</span>
+        <a href="#viewer-section" id="back-to-top" class="inline-flex items-center gap-1.5 text-amber-400/90 hover:text-amber-300 transition-colors font-medium">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+          <span id="back-to-top-label">Quay lại mô hình 3D</span>
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* =========================================================================
+       1. MULTILINGUAL CONTENT (5 LANGUAGES — DEFAULT: VIETNAMESE)
+       ========================================================================= */
+    const TRANSLATIONS = {
+      vi: {
+        flag: '🇻🇳',
+        label: 'Tiếng Việt',
+        code: 'VI',
+        pageTitle: 'Ấm Gốm Cổ Có Vòi — Trưng Bày Hiện Vật 3D',
+        navTitle: 'Ấm Gốm Cổ Có Vòi',
+        navSubtitle: 'Hiện vật đất nung phục chế',
+        hint: 'Kéo để xoay 360° • Cuộn để phóng to',
+        loading: 'Đang khởi tạo mô hình 3D...',
+        autoRotateOn: 'Tự xoay: Bật',
+        autoRotateOff: 'Tự xoay: Tắt',
+        resetCam: 'Góc nhìn mặc định',
+        scrollPrompt: 'Lướt xuống xem thông tin hiện vật',
+        infoBadge: 'Hồ sơ hiện vật',
+        infoTitle: 'Ấm Gốm Cổ Có Vòi',
+        infoDesc: 'Bình gốm đất nung dáng cầu dẹt, cổ ngắn miệng loe và có vòi cong nhỏ bên hông. Bề mặt mang màu đất nung tự nhiên với các vết rạn và dấu tích ghép nối phục chế đặc trưng của hiện vật khảo cổ.',
+        specMaterialLabel: 'Chất liệu',
+        specMaterialValue: 'Đất nung không tráng men',
+        specFormLabel: 'Kiểu dáng',
+        specFormValue: 'Thân tròn dẹt, cổ ngắn, miệng loe, có vòi cong',
+        specConditionLabel: 'Tình trạng',
+        specConditionValue: 'Phục chế từ mảnh vỡ, mẻ nhẹ ở vành miệng',
+        specEraLabel: 'Phong cách & Chế tác',
+        specEraValue: 'Gốm cổ dân dụng truyền thống (tạo hình thủ công)',
+        footerNote: 'Mô hình 3D tương tác đa chiều — Tối ưu cho máy tính và điện thoại',
+        backToTop: 'Quay lại mô hình 3D'
+      },
+      en: {
+        flag: '🇬🇧',
+        label: 'English',
+        code: 'EN',
+        pageTitle: 'Ancient Spouted Terracotta Vessel — 3D Artifact Showcase',
+        navTitle: 'Ancient Spouted Vessel',
+        navSubtitle: 'Restored terracotta artifact',
+        hint: 'Drag to rotate 360° • Scroll to zoom',
+        loading: 'Initializing 3D model...',
+        autoRotateOn: 'Auto-Rotate: On',
+        autoRotateOff: 'Auto-Rotate: Off',
+        resetCam: 'Reset View',
+        scrollPrompt: 'Scroll down for artifact details',
+        infoBadge: 'Artifact Record',
+        infoTitle: 'Ancient Spouted Terracotta Vessel',
+        infoDesc: 'An oblate earthenware vessel with a short narrow neck, flared rim, and small curved side spout. Its natural terracotta surface displays weathered patina and archaeological restoration seams.',
+        specMaterialLabel: 'Material',
+        specMaterialValue: 'Unglazed terracotta earthenware',
+        specFormLabel: 'Form & Structure',
+        specFormValue: 'Flattened globular body, short neck, curved spout',
+        specConditionLabel: 'Condition',
+        specConditionValue: 'Reconstructed from shards, chipped rim',
+        specEraLabel: 'Style & Craft',
+        specEraValue: 'Traditional ancient utilitarian pottery',
+        footerNote: 'Interactive 3D showcase — Optimized for desktop & mobile',
+        backToTop: 'Back to 3D Viewer'
+      },
+      ja: {
+        flag: '🇯🇵',
+        label: '日本語',
+        code: 'JA',
+        pageTitle: '古代注口土器 — 3D遺物展示',
+        navTitle: '古代注口土器',
+        navSubtitle: '修復された素焼き土器',
+        hint: 'ドラッグで360°回転 • スクロールで拡大縮小',
+        loading: '3Dモデルを読み込み中...',
+        autoRotateOn: '自動回転: オン',
+        autoRotateOff: '自動回転: オフ',
+        resetCam: '視点をリセット',
+        scrollPrompt: '下にスクロールして詳細を見る',
+        infoBadge: '遺物データ',
+        infoTitle: '古代注口土器（素焼き壺）',
+        infoDesc: '扁平な球形の胴部に短い首と外反する口縁、側面に小さな湾曲した注ぎ口を持つ素焼き土器です。自然な土器の色合いと、考古学的な接合修復の跡が特徴的です。',
+        specMaterialLabel: '材質',
+        specMaterialValue: '無釉テラコッタ（素焼き土器）',
+        specFormLabel: '形状',
+        specFormValue: '扁球形胴部・短頸・湾曲注ぎ口',
+        specConditionLabel: '保存状態',
+        specConditionValue: '破片より接合修復、口縁部に欠けあり',
+        specEraLabel: '様式・製作',
+        specEraValue: '伝統的な古代日常雑器（手びねり・ろくろ成形）',
+        footerNote: 'インタラクティブ3D展示 — PC・スマートフォン対応',
+        backToTop: '3Dモデルに戻る'
+      },
+      ko: {
+        flag: '🇰🇷',
+        label: '한국어',
+        code: 'KO',
+        pageTitle: '고대 주구 토기 — 3D 유물 전시',
+        navTitle: '고대 주구 토기',
+        navSubtitle: '복원된 적갈색 토기 유물',
+        hint: '드래그하여 360° 회전 • 스크롤하여 확대/축소',
+        loading: '3D 모델 불러오는 중...',
+        autoRotateOn: '자동 회전: 켜짐',
+        autoRotateOff: '자동 회전: 꺼짐',
+        resetCam: '시점 초기화',
+        scrollPrompt: '아래로 스크롤하여 유물 정보 보기',
+        infoBadge: '유물 정보',
+        infoTitle: '고대 주구 토기 (주전자형 토기)',
+        infoDesc: '납작한 구형 몸체에 짧은 목과 밖으로 벌어진 입구, 옆면에 작은 곡선 주구가 달린 토기입니다. 자연스러운 토기 질감과 고고학적 파편 접합 복원 흔적이 잘 드러납니다.',
+        specMaterialLabel: '재질',
+        specMaterialValue: '유약을 바르지 않은 점토 토기',
+        specFormLabel: '형태',
+        specFormValue: '납작한 원형 몸체, 짧은 목, 곡선 주구',
+        specConditionLabel: '보존 상태',
+        specConditionValue: '파편 접합 복원, 입구 부분 일부 결손',
+        specEraLabel: '양식 및 제작',
+        specEraValue: '전통 고대 생활 토기 (수공 성형)',
+        footerNote: '3D 인터랙티브 유물 전시 — 데스크톱 및 모바일 지원',
+        backToTop: '3D 모델로 돌아가기'
+      },
+      zh: {
+        flag: '🇨🇳',
+        label: '中文',
+        code: 'ZH',
+        pageTitle: '古代带流陶壶 — 3D 文物展示',
+        navTitle: '古代带流陶壶',
+        navSubtitle: '修复红陶文物',
+        hint: '拖动360°旋转 • 滚轮缩放',
+        loading: '正在加载 3D 模型...',
+        autoRotateOn: '自动旋转：开',
+        autoRotateOff: '自动旋转：关',
+        resetCam: '重置视角',
+        scrollPrompt: '向下滑动查看文物简介',
+        infoBadge: '文物档案',
+        infoTitle: '古代带流红陶壶',
+        infoDesc: '器身呈扁球形，短颈撇口，一侧附有小巧上翘的弯曲壶流。器表保留自然红陶色泽，并可见考古修复拼接的裂纹与残缺痕迹。',
+        specMaterialLabel: '材质',
+        specMaterialValue: '无釉红陶（泥质陶）',
+        specFormLabel: '器型',
+        specFormValue: '扁圆腹、短颈撇口、侧附弯流',
+        specConditionLabel: '保存状况',
+        specConditionValue: '残片拼接修复，口沿略有残缺',
+        specEraLabel: '风格工艺',
+        specEraValue: '传统古代实用陶器（手工制陶）',
+        footerNote: '多角度交互式 3D 展示 — 适配电脑与移动设备',
+        backToTop: '返回 3D 模型'
+      }
+    };
+
+    let currentLang = 'vi';
+    let isAutoRotate = true;
+
+    // Safely update element textContent only when the element exists in the DOM
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function applyLanguage(lang) {
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.vi;
+      currentLang = lang;
+      document.documentElement.lang = lang;
+      document.title = t.pageTitle;
+
+      // Update top-right selector button
+      setText('current-lang-flag', t.flag);
+      setText('current-lang-label', t.label);
+      setText('current-lang-code', t.code);
+
+      // Highlight active option
+      document.querySelectorAll('.lang-option').forEach((btn) => {
+        const active = btn.dataset.lang === lang;
+        btn.classList.toggle('bg-amber-600/20', active);
+        btn.classList.toggle('text-amber-200', active);
+        btn.classList.toggle('text-stone-200', !active);
+      });
+
+      // Update UI labels & artifact info
+      setText('nav-title', t.navTitle);
+      setText('nav-subtitle', t.navSubtitle);
+      setText('hint-text', t.hint);
+      setText('loading-text', t.loading);
+      setText('btn-autorotate-label', isAutoRotate ? t.autoRotateOn : t.autoRotateOff);
+      setText('btn-reset-label', t.resetCam);
+      setText('scroll-prompt-label', t.scrollPrompt);
+
+      setText('info-badge', t.infoBadge);
+      setText('info-title', t.infoTitle);
+      setText('info-description', t.infoDesc);
+
+      setText('spec-material-label', t.specMaterialLabel);
+      setText('spec-material-value', t.specMaterialValue);
+      setText('spec-form-label', t.specFormLabel);
+      setText('spec-form-value', t.specFormValue);
+      setText('spec-condition-label', t.specConditionLabel);
+      setText('spec-condition-value', t.specConditionValue);
+      setText('spec-era-label', t.specEraLabel);
+      setText('spec-era-value', t.specEraValue);
+
+      setText('footer-note', t.footerNote);
+      setText('back-to-top-label', t.backToTop);
+    }
+
+    // Language dropdown interactions
+    const langToggleBtn = document.getElementById('lang-toggle-btn');
+    const langMenu = document.getElementById('lang-menu');
+    const langChevron = document.getElementById('lang-chevron');
+
+    function closeLangMenu() {
+      langMenu.classList.add('hidden');
+      langToggleBtn.setAttribute('aria-expanded', 'false');
+      langChevron.classList.remove('rotate-180');
+    }
+
+    langToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = langMenu.classList.contains('hidden');
+      langMenu.classList.toggle('hidden', !isHidden);
+      langToggleBtn.setAttribute('aria-expanded', String(isHidden));
+      langChevron.classList.toggle('rotate-180', isHidden);
+    });
+
+    document.querySelectorAll('.lang-option').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyLanguage(btn.dataset.lang);
+        closeLangMenu();
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('lang-dropdown-wrapper').contains(e.target)) {
+        closeLangMenu();
+      }
+    });
+
+    /* =========================================================================
+       2. PROCEDURAL TERRACOTTA TEXTURE GENERATOR (ALBEDO + BUMP + ROUGHNESS)
+       ========================================================================= */
+    // Deterministic pseudo-random generator for reproducible clay grain & cracks
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return function () {
+        a |= 0;
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function createTerracottaTextures() {
+      const size = 1024;
+      const rand = mulberry32(20261124);
+
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = size;
+      colorCanvas.height = size;
+      const cCtx = colorCanvas.getContext('2d');
+
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size;
+      bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d');
+
+      const roughCanvas = document.createElement('canvas');
+      roughCanvas.width = size;
+      roughCanvas.height = size;
+      const rCtx = roughCanvas.getContext('2d');
+
+      // 1. Base vertical clay gradient (warm ochre/beige on belly, slightly darker kiln tones near base & neck)
+      const baseGrad = cCtx.createLinearGradient(0, 0, 0, size);
+      baseGrad.addColorStop(0.0, '#7c5d47'); // Inner mouth / top edge
+      baseGrad.addColorStop(0.18, '#b68968'); // Rim & neck
+      baseGrad.addColorStop(0.38, '#cfa17d'); // Upper shoulder (warm terracotta)
+      baseGrad.addColorStop(0.62, '#c1906b'); // Mid belly
+      baseGrad.addColorStop(0.84, '#a67a59'); // Lower belly
+      baseGrad.addColorStop(1.0, '#7e5c45');  // Rounded base
+      cCtx.fillStyle = baseGrad;
+      cCtx.fillRect(0, 0, size, size);
+
+      // Neutral mid-gray base for bump & high-roughness base for matte earthenware
+      bCtx.fillStyle = '#808080';
+      bCtx.fillRect(0, 0, size, size);
+
+      rCtx.fillStyle = '#dcdcdc'; // ~0.86 roughness
+      rCtx.fillRect(0, 0, size, size);
+
+      // 2. Mottled kiln-firing clouds & mineral aging patches
+      const palette = [
+        'rgba(222, 188, 156, 0.22)', // Pale buff clay
+        'rgba(186, 126, 88, 0.20)',  // Warm terracotta blush
+        'rgba(118, 86, 63, 0.24)',   // Kiln smoke brown
+        'rgba(92, 68, 52, 0.20)',    // Darker earth patina
+        'rgba(212, 165, 128, 0.18)'  // Soft sand ochre
+      ];
+
+      for (let i = 0; i < 240; i++) {
+        const x = rand() * size;
+        const y = rand() * size;
+        const r = 35 + rand() * 140;
+        const col = palette[Math.floor(rand() * palette.length)];
+
+        // Wrap horizontally so texture is seamless around the pot
+        for (const offset of [-size, 0, size]) {
+          const g = cCtx.createRadialGradient(x + offset, y, r * 0.1, x + offset, y, r);
+          g.addColorStop(0, col);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          cCtx.fillStyle = g;
+          cCtx.beginPath();
+          cCtx.arc(x + offset, y, r, 0, Math.PI * 2);
+          cCtx.fill();
+        }
+
+        // Subtle organic roughness & surface undulation
+        const bVal = Math.floor(115 + rand() * 30);
+        const bg = bCtx.createRadialGradient(x, y, 2, x, y, r * 0.7);
+        bg.addColorStop(0, `rgba(${bVal},${bVal},${bVal},0.16)`);
+        bg.addColorStop(1, 'rgba(128,128,128,0)');
+        bCtx.fillStyle = bg;
+        bCtx.beginPath();
+        bCtx.arc(x, y, r * 0.7, 0, Math.PI * 2);
+        bCtx.fill();
+      }
+
+      // Characteristic warm terracotta band around upper shoulder (like reference photo)
+      const blushGrad = cCtx.createLinearGradient(0, size * 0.28, 0, size * 0.48);
+      blushGrad.addColorStop(0, 'rgba(204, 122, 78, 0)');
+      blushGrad.addColorStop(0.5, 'rgba(204, 122, 78, 0.22)');
+      blushGrad.addColorStop(1, 'rgba(204, 122, 78, 0)');
+      cCtx.fillStyle = blushGrad;
+      cCtx.fillRect(0, size * 0.28, size, size * 0.20);
+
+      // 3. Subtle horizontal wheel-thrown pottery striations
+      for (let y = 0; y < size; y += 3) {
+        const alpha = 0.02 + rand() * 0.035;
+        cCtx.fillStyle = rand() > 0.5 ? `rgba(255,235,215,${alpha})` : `rgba(55,35,20,${alpha})`;
+        cCtx.fillRect(0, y, size, 1 + rand() * 1.5);
+
+        const bShade = rand() > 0.5 ? 'rgba(155,155,155,0.12)' : 'rgba(100,100,100,0.12)';
+        bCtx.fillStyle = bShade;
+        bCtx.fillRect(0, y, size, 1.5);
+      }
+
+      // 4. Fine sand / grog speckles (unglazed earthenware grain)
+      for (let i = 0; i < 14000; i++) {
+        const x = rand() * size;
+        const y = rand() * size;
+        const s = 0.8 + rand() * 1.8;
+        const dark = rand() > 0.45;
+        cCtx.fillStyle = dark
+          ? `rgba(60, 42, 30, ${0.08 + rand() * 0.16})`
+          : `rgba(235, 212, 188, ${0.07 + rand() * 0.13})`;
+        cCtx.fillRect(x, y, s, s);
+
+        bCtx.fillStyle = dark ? 'rgba(92,92,92,0.22)' : 'rgba(165,165,165,0.20)';
+        bCtx.fillRect(x, y, s, s);
+
+        rCtx.fillStyle = dark ? 'rgba(245,245,245,0.25)' : 'rgba(195,195,195,0.20)';
+        rCtx.fillRect(x, y, s, s);
+      }
+
+      // 5. Archaeological Fracture Network & Restoration Seams
+      // Helper to draw a jagged, realistic ceramic crack path on all 3 maps
+      function drawCrack(points, baseWidth = 2.6, depth = 1.0) {
+        // Subdivide segments with organic jitter
+        const detailed = [points[0]];
+        for (let i = 0; i < points.length - 1; i++) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          const steps = 6;
+          for (let s = 1; s <= steps; s++) {
+            const t = s / steps;
+            const jitter = s === steps ? 0 : (rand() - 0.5) * 14;
+            const jitterY = s === steps ? 0 : (rand() - 0.5) * 12;
+            detailed.push([
+              p0[0] + (p1[0] - p0[0]) * t + jitter,
+              p0[1] + (p1[1] - p0[1]) * t + jitterY
+            ]);
+          }
+        }
+
+        const strokePath = (ctx, offset) => {
+          ctx.beginPath();
+          ctx.moveTo(detailed[0][0] + offset, detailed[0][1]);
+          for (let i = 1; i < detailed.length; i++) {
+            ctx.lineTo(detailed[i][0] + offset, detailed[i][1]);
+          }
+          ctx.stroke();
+        };
+
+        for (const offset of [-size, 0, size]) {
+          // Subtle weathered pale bevel along crack rim
+          cCtx.lineCap = 'round';
+          cCtx.lineJoin = 'round';
+          cCtx.strokeStyle = 'rgba(218, 185, 152, 0.25)';
+          cCtx.lineWidth = baseWidth + 4.5;
+          strokePath(cCtx, offset);
+
+          // Dark recessed shadow around seam
+          cCtx.strokeStyle = `rgba(54, 38, 28, ${0.55 * depth})`;
+          cCtx.lineWidth = baseWidth + 2.0;
+          strokePath(cCtx, offset);
+
+          // Core dark fissure
+          cCtx.strokeStyle = `rgba(20, 14, 10, ${0.92 * depth})`;
+          cCtx.lineWidth = baseWidth;
+          strokePath(cCtx, offset);
+
+          // Deep groove in bump map
+          bCtx.lineCap = 'round';
+          bCtx.lineJoin = 'round';
+          bCtx.strokeStyle = 'rgba(18, 18, 18, 0.92)';
+          bCtx.lineWidth = baseWidth + 2.2;
+          strokePath(bCtx, offset);
+
+          // Maximum roughness inside crack
+          rCtx.lineCap = 'round';
+          rCtx.lineJoin = 'round';
+          rCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+          rCtx.lineWidth = baseWidth + 2.5;
+          strokePath(rCtx, offset);
+        }
+      }
+
+      // Main cracks positioned across the front/lower belly (matching reference photo)
+      // Note: LatheGeometry UV u=0.25 faces +Z (front), u=0.5 faces -X (spout/left), u=0.0 faces +X (right)
+      const crackPaths = [
+        // Prominent central-lower polygonal shard seams (front face u ~ 0.12 to 0.45)
+        [[110, 740], [195, 650], [285, 685], [370, 565], [470, 625], [530, 725]],
+        [[285, 685], [240, 800], [340, 865], [460, 825], [530, 725]],
+        [[195, 650], [140, 560], [220, 485]],
+        [[370, 565], [395, 455], [460, 390]],
+        [[470, 625], [580, 610], [670, 690], [620, 805], [460, 825]],
+        // Left-side cracks near spout & lower-left shard
+        [[530, 725], [610, 710], [720, 620], [790, 685], [760, 795]],
+        [[140, 560], [65, 610], [20, 700]],
+        // Back & right secondary restoration seams
+        [[720, 620], [835, 550], [925, 645], [990, 720]],
+        [[835, 550], [860, 445], [940, 400]],
+        [[620, 805], [710, 860], [845, 830], [925, 645]],
+        // Hairline upper shoulder crack
+        [[250, 390], [280, 470], [340, 520]]
+      ];
+
+      crackPaths.forEach((pts, idx) => {
+        const w = idx < 5 ? 3.0 : idx < 9 ? 2.3 : 1.5;
+        drawCrack(pts, w, idx < 8 ? 1.0 : 0.72);
+      });
+
+      // 6. Small dark recessed gap / missing chip on the lower-left belly (distinctive feature from photo)
+      const gapX = 330;
+      const gapY = 715;
+      const drawGap = (ctx, fillStyle, expand = 0) => {
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(gapX - 24 - expand, gapY - 6 - expand);
+        ctx.lineTo(gapX + 20 + expand, gapY - 12 - expand);
+        ctx.lineTo(gapX + 28 + expand, gapY + 4 + expand);
+        ctx.lineTo(gapX + 6 + expand, gapY + 14 + expand);
+        ctx.lineTo(gapX - 18 - expand, gapY + 10 + expand);
+        ctx.closePath();
+        ctx.fill();
+      };
+      drawGap(cCtx, 'rgba(55, 38, 28, 0.75)', 4);
+      drawGap(cCtx, '#110c09', 0);
+      drawGap(bCtx, '#050505', 2);
+      drawGap(rCtx, '#ffffff', 3);
+
+      // Build Three.js CanvasTextures
+      const colorMap = new THREE.CanvasTexture(colorCanvas);
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.wrapS = THREE.RepeatWrapping;
+      colorMap.wrapT = THREE.ClampToEdgeWrapping;
+      colorMap.anisotropy = 8;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.ClampToEdgeWrapping;
+      bumpMap.anisotropy = 8;
+
+      const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+      roughnessMap.wrapS = THREE.RepeatWrapping;
+      roughnessMap.wrapT = THREE.ClampToEdgeWrapping;
+      roughnessMap.anisotropy = 8;
+
+      return { colorMap, bumpMap, roughnessMap };
+    }
+
+    /* =========================================================================
+       3. PROCEDURAL 3D GEOMETRY: ANCIENT SPOUTED TERRACOTTA VESSEL
+       ========================================================================= */
+    function buildArtifactModel(textures) {
+      const artifactGroup = new THREE.Group();
+
+      // Shared unglazed matte terracotta PBR material
+      const clayMaterial = new THREE.MeshStandardMaterial({
+        map: textures.colorMap,
+        bumpMap: textures.bumpMap,
+        bumpScale: 0.032,
+        roughnessMap: textures.roughnessMap,
+        roughness: 0.90,
+        metalness: 0.02,
+        vertexColors: true
+      });
+
+      /* -----------------------------------------------------------------------
+         A. MAIN VESSEL BODY (DOUBLE-WALLED LATHE WITH CHIPPED RIM)
+         ----------------------------------------------------------------------- */
+      // Profile points (radius, y) from outer bottom -> belly -> neck -> flared rim -> lip -> inner neck -> inner cavity
+      const profile = [
+        // Outer base (gently rounded oblate bottom)
+        new THREE.Vector2(0.002, -0.94),
+        new THREE.Vector2(0.28, -0.93),
+        new THREE.Vector2(0.58, -0.89),
+        new THREE.Vector2(0.88, -0.80),
+        new THREE.Vector2(1.16, -0.64),
+        new THREE.Vector2(1.38, -0.42),
+        new THREE.Vector2(1.51, -0.14),
+        new THREE.Vector2(1.54,  0.12), // Widest oblate belly
+        new THREE.Vector2(1.46,  0.38),
+        new THREE.Vector2(1.27,  0.60),
+        new THREE.Vector2(0.98,  0.76),
+        new THREE.Vector2(0.67,  0.86),
+        // Short concave neck
+        new THREE.Vector2(0.47,  0.94),
+        new THREE.Vector2(0.43,  1.03),
+        new THREE.Vector2(0.47,  1.13),
+        // Flared mouth rim (outer -> rounded top -> inner)
+        new THREE.Vector2(0.56,  1.23),
+        new THREE.Vector2(0.55,  1.26),
+        new THREE.Vector2(0.50,  1.265),
+        new THREE.Vector2(0.46,  1.22),
+        // Inner neck wall (visible through the chipped mouth)
+        new THREE.Vector2(0.37,  1.06),
+        new THREE.Vector2(0.36,  0.94),
+        new THREE.Vector2(0.52,  0.76),
+        new THREE.Vector2(0.70,  0.52),
+        new THREE.Vector2(0.002, 0.36)  // Dark interior floor
+      ];
+
+      const radialSegments = 96;
+      const bodyGeo = new THREE.LatheGeometry(profile, radialSegments);
+
+      // Prepare vertex colors (natural brightness outside, dark ambient occlusion inside mouth)
+      const posAttr = bodyGeo.attributes.position;
+      const uvAttr = bodyGeo.attributes.uv;
+      const vertexCount = posAttr.count;
+      const colors = new Float32Array(vertexCount * 3);
+      const profileLen = profile.length;
+
+      // Helper for smooth angular chip notches
+      function gaussianChip(angle, center, width) {
+        let diff = Math.atan2(Math.sin(angle - center), Math.cos(angle - center));
+        return Math.exp(-(diff * diff) / (2 * width * width));
+      }
+
+      for (let i = 0; i < vertexCount; i++) {
+        let x = posAttr.getX(i);
+        let y = posAttr.getY(i);
+        let z = posAttr.getZ(i);
+
+        const profileIdx = i % profileLen;
+        const isInterior = profileIdx >= 18;
+        const theta = Math.atan2(z, x); // 0 = +X, PI/2 = +Z (front), PI = -X (left/spout)
+        const r = Math.hypot(x, z);
+
+        // 1. Subtle hand-thrown organic irregularity across the belly
+        const organic =
+          Math.sin(theta * 2.0 + 0.6) * 0.016 +
+          Math.cos(theta * 3.0 - 0.9) * 0.011 +
+          Math.sin(y * 5.0 + theta * 4.0) * 0.006;
+
+        if (r > 0.05) {
+          const scale = 1 + organic;
+          x *= scale;
+          z *= scale;
+        }
+
+        // 2. Realistic V-shaped chipped notches along the flared mouth rim
+        // Rim profile indices are roughly 14..19 (y > 1.05)
+        if (profileIdx >= 13 && profileIdx <= 20 && y > 1.02) {
+          const rimFactor = THREE.MathUtils.smoothstep(y, 1.02, 1.25);
+
+          // Main front V-shaped chip (facing camera +Z, slight left bias like reference photo)
+          const frontChip = gaussianChip(theta, Math.PI * 0.52, 0.24) * 0.23;
+          // Secondary chip on the back-right rim
+          const backChip = gaussianChip(theta, -Math.PI * 0.36, 0.20) * 0.14;
+          // Small minor chip on the left-back rim
+          const sideChip = gaussianChip(theta, -Math.PI * 0.78, 0.13) * 0.08;
+          // Fine jagged edge micro-variation
+          const jag = Math.sin(theta * 19.0) * 0.007 + Math.cos(theta * 31.0) * 0.005;
+
+          const totalDrop = (frontChip + backChip + sideChip) * rimFactor + jag * rimFactor;
+          y -= totalDrop;
+
+          // Pull chipped rim edges very slightly inward for broken-shard realism
+          const pullIn = 1.0 - (frontChip + backChip) * 0.18 * rimFactor;
+          x *= pullIn;
+          z *= pullIn;
+        }
+
+        posAttr.setXYZ(i, x, y, z);
+
+        // Adjust V-coordinate so outer body uses main texture cleanly
+        if (!isInterior) {
+          // Map y from -0.94..1.26 to v = 0.04..0.95 (inverted canvas Y)
+          const mappedV = THREE.MathUtils.clamp((y + 0.95) / 2.25, 0.02, 0.98);
+          uvAttr.setY(i, mappedV);
+        }
+
+        // Vertex color shading: darken deep inside the neck/cavity for realistic shadows
+        let shade = 1.0;
+        if (isInterior) {
+          // Smoothly darken from rim edge down into the hollow pot interior
+          const depthT = THREE.MathUtils.clamp((1.24 - y) / 0.65, 0, 1);
+          shade = THREE.MathUtils.lerp(0.78, 0.10, depthT);
+        } else if (y < -0.72) {
+          // Subtle base ambient darkening
+          shade = THREE.MathUtils.lerp(0.84, 1.0, (y + 0.94) / 0.22);
+        }
+        colors[i * 3 + 0] = shade;
+        colors[i * 3 + 1] = shade * 0.98;
+        colors[i * 3 + 2] = shade * 0.95;
+      }
+
+      bodyGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      bodyGeo.computeVertexNormals();
+
+      const bodyMesh = new THREE.Mesh(bodyGeo, clayMaterial);
+      bodyMesh.castShadow = true;
+      bodyMesh.receiveShadow = true;
+      artifactGroup.add(bodyMesh);
+
+      /* -----------------------------------------------------------------------
+         B. CURVED TUBULAR SPOUT (LEFT SHOULDER, TAPERED, HOLLOW, CHIPPED TIP)
+         ----------------------------------------------------------------------- */
+      const spoutCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.26, -0.02, 0.08),  // Embedded seamlessly inside left belly
+        new THREE.Vector3(-1.54,  0.07, 0.11),  // Emerging from left shoulder
+        new THREE.Vector3(-1.74,  0.24, 0.12),  // Curving outward & upward
+        new THREE.Vector3(-1.81,  0.46, 0.11),  // Vertical rise
+        new THREE.Vector3(-1.78,  0.65, 0.09)   // Slight inward hook at tip (matches photo)
+      ]);
+
+      const spoutMesh = createHollowTaperedSpout(spoutCurve, clayMaterial);
+      artifactGroup.add(spoutMesh);
+
+      // Center the artifact slightly so the pot + spout balance visually in frame
+      artifactGroup.position.set(0.12, 0.02, 0);
+      return artifactGroup;
+    }
+
+    /**
+     * Builds a thick-walled, hollow, tapered curved spout along a 3D curve
+     * with a flared base fillet and a subtly chipped opening at the tip.
+     */
+    function createHollowTaperedSpout(curve, material) {
+      const lengthSegs = 28;
+      const radialSegs = 32;
+      const frames = curve.computeFrenetFrames(lengthSegs, false);
+
+      const positions = [];
+      const uvs = [];
+      const colors = [];
+      const indices = [];
+
+      // Ring radius profile (outer and inner)
+      function getOuterRadius(t) {
+        // Wide flared base to blend into vessel wall, tapering gracefully to the tip
+        const baseFlare = Math.pow(1 - t, 3.2) * 0.24;
+        const shaft = THREE.MathUtils.lerp(0.175, 0.105, t);
+        return shaft + baseFlare;
+      }
+
+      function getInnerRadius(t) {
+        return Math.max(0.045, getOuterRadius(t) - 0.036);
+      }
+
+      // Helper to push a ring of vertices
+      function addRing(t, isInner, shade) {
+        const pt = curve.getPointAt(t);
+        const idx = Math.min(lengthSegs, Math.round(t * lengthSegs));
+        const N = frames.normals[idx];
+        const B = frames.binormals[idx];
+        const T = frames.tangents[idx];
+        const baseR = isInner ? getInnerRadius(t) : getOuterRadius(t);
+
+        for (let j = 0; j <= radialSegs; j++) {
+          const u = j / radialSegs;
+          const phi = u * Math.PI * 2;
+          const cosP = Math.cos(phi);
+          const sinP = Math.sin(phi);
+
+          // Slight organic asymmetry & subtle chipped notch at the spout tip
+          let r = baseR * (1 + Math.sin(phi * 2 + t * 4) * 0.03);
+          let tipOffset = 0;
+          if (t > 0.85) {
+            const tipFactor = (t - 0.85) / 0.15;
+            // Subtle chip on the outer-back edge of the spout tip
+            const chip = Math.exp(-Math.pow(phi - 2.1, 2) / 0.45) * 0.055;
+            tipOffset = -chip * tipFactor;
+          }
+
+          const vx = pt.x + (N.x * cosP + B.x * sinP) * r + T.x * tipOffset;
+          const vy = pt.y + (N.y * cosP + B.y * sinP) * r + T.y * tipOffset;
+          const vz = pt.z + (N.z * cosP + B.z * sinP) * r + T.z * tipOffset;
+
+          positions.push(vx, vy, vz);
+          uvs.push(u * 0.4 + 0.15, 0.35 + t * 0.32);
+          colors.push(shade, shade * 0.98, shade * 0.95);
+        }
+      }
+
+      // 1. Outer wall rings (t: 0 -> 1)
+      for (let i = 0; i <= lengthSegs; i++) {
+        const t = i / lengthSegs;
+        const shade = THREE.MathUtils.lerp(0.88, 1.0, Math.min(t * 2.5, 1));
+        addRing(t, false, shade);
+      }
+
+      // 2. Tip rim transition & dark inner bore (t: 1 -> 0.55)
+      const innerSteps = 6;
+      for (let i = 0; i <= innerSteps; i++) {
+        const frac = i / innerSteps;
+        const t = THREE.MathUtils.lerp(1.0, 0.52, frac);
+        const shade = THREE.MathUtils.lerp(0.72, 0.08, frac);
+        addRing(t, true, shade);
+      }
+
+      const totalRings = lengthSegs + 1 + innerSteps + 1;
+      const stride = radialSegs + 1;
+
+      for (let r = 0; r < totalRings - 1; r++) {
+        for (let j = 0; j < radialSegs; j++) {
+          const a = r * stride + j;
+          const b = (r + 1) * stride + j;
+          const c = (r + 1) * stride + (j + 1);
+          const d = r * stride + (j + 1);
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    /* =========================================================================
+       4. SOFT MUSEUM CONTACT SHADOW PLANE
+       ========================================================================= */
+    function createContactShadow() {
+      const sCanvas = document.createElement('canvas');
+      sCanvas.width = 256;
+      sCanvas.height = 256;
+      const ctx = sCanvas.getContext('2d');
+
+      const grad = ctx.createRadialGradient(128, 128, 12, 128, 128, 124);
+      grad.addColorStop(0.0, 'rgba(0, 0, 0, 0.62)');
+      grad.addColorStop(0.45, 'rgba(0, 0, 0, 0.30)');
+      grad.addColorStop(0.78, 'rgba(0, 0, 0, 0.08)');
+      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+
+      const shadowTex = new THREE.CanvasTexture(sCanvas);
+      const planeGeo = new THREE.PlaneGeometry(3.8, 3.8);
+      const planeMat = new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        depthWrite: false
+      });
+
+      const shadowMesh = new THREE.Mesh(planeGeo, planeMat);
+      shadowMesh.rotation.x = -Math.PI / 2;
+      shadowMesh.position.set(0.05, -0.955, 0);
+      return shadowMesh;
+    }
+
+    /* =========================================================================
+       5. THREE.JS SCENE, LIGHTING, CONTROLS & ANIMATION LOOP
+       ========================================================================= */
+    let scene, camera, renderer, controls, artifact;
+
+    // Default hero camera position matching the reference photo's iconic 3/4 view
+    const DEFAULT_CAM_POS = new THREE.Vector3(0.28, 0.72, 4.35);
+    const DEFAULT_TARGET = new THREE.Vector3(-0.04, 0.08, 0.0);
+
+    function init3DViewer() {
+      const container = document.getElementById('canvas-container');
+      const width = container.clientWidth || window.innerWidth;
+      const height = container.clientHeight || window.innerHeight;
+
+      scene = new THREE.Scene();
+
+      // Responsive FOV slightly wider on portrait mobile so the whole vessel fits comfortably
+      const isPortrait = height > width;
+      camera = new THREE.PerspectiveCamera(isPortrait ? 44 : 36, width / height, 0.1, 100);
+      camera.position.copy(DEFAULT_CAM_POS);
+      if (isPortrait) {
+        camera.position.multiplyScalar(1.22);
+      }
+
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.06;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      container.appendChild(renderer.domElement);
+
+      // Museum Studio Lighting Rig
+      const hemiLight = new THREE.HemisphereLight(0xfff1e0, 0x261e18, 0.85);
+      scene.add(hemiLight);
+
+      // Warm key spotlight (front-top-left, highlighting terracotta warmth & cracks)
+      const keyLight = new THREE.DirectionalLight(0xffe9d2, 2.15);
+      keyLight.position.set(-2.6, 3.8, 3.6);
+      scene.add(keyLight);
+
+      // Soft cool fill light (right side, creating sculptural depth)
+      const fillLight = new THREE.DirectionalLight(0xb9cce0, 0.58);
+      fillLight.position.set(3.8, 1.2, 2.2);
+      scene.add(fillLight);
+
+      // Warm rim backlight (separating pot & curved spout from dark studio backdrop)
+      const rimLight = new THREE.DirectionalLight(0xffd7b0, 0.95);
+      rimLight.position.set(1.5, 2.8, -3.8);
+      scene.add(rimLight);
+
+      // Subtle under-bounce light so inspecting the bottom base reveals detail
+      const bottomLight = new THREE.DirectionalLight(0xc2a58c, 0.35);
+      bottomLight.position.set(0, -3.5, 1.0);
+      scene.add(bottomLight);
+
+      // Build Textures & 3D Vessel
+      const textures = createTerracottaTextures();
+      artifact = buildArtifactModel(textures);
+      scene.add(artifact);
+
+      // Subtle contact shadow underneath
+      scene.add(createContactShadow());
+
+      // OrbitControls: Full 360-degree multi-directional inspection (top, sides, bottom)
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.copy(DEFAULT_TARGET);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.enablePan = true;
+      controls.panSpeed = 0.6;
+      controls.rotateSpeed = 0.85;
+      controls.zoomSpeed = 0.85;
+      controls.minDistance = 2.1;
+      controls.maxDistance = 8.5;
+      controls.minPolarAngle = 0.0;        // Can inspect directly from above
+      controls.maxPolarAngle = Math.PI;    // Can inspect directly from underneath
+      controls.autoRotate = isAutoRotate;
+      controls.autoRotateSpeed = 0.75;
+      controls.update();
+
+      // Fade out interaction hint once user interacts
+      const hintEl = document.getElementById('interaction-hint');
+      controls.addEventListener('start', () => {
+        if (hintEl) hintEl.style.opacity = '0';
+        cancelCameraReset();
+      });
+
+      // Handle window resize smoothly
+      window.addEventListener('resize', () => {
+        const w = container.clientWidth || window.innerWidth;
+        const h = container.clientHeight || window.innerHeight;
+        camera.fov = h > w ? 44 : 36;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
+
+      // Hide loading screen smoothly
+      const loader = document.getElementById('loader-overlay');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 500);
+      }
+
+      // Start render loop
+      animate();
+    }
+
+    // Smooth spherical camera reset state (prevents sudden zoom-in & auto-rotate conflict)
+    let resetState = null;
+
+    function getDefaultCamPos() {
+      const container = document.getElementById('canvas-container');
+      const w = container ? container.clientWidth : window.innerWidth;
+      const h = container ? container.clientHeight : window.innerHeight;
+      return DEFAULT_CAM_POS.clone().multiplyScalar(h > w ? 1.22 : 1.0);
+    }
+
+    function cancelCameraReset() {
+      if (resetState) {
+        resetState = null;
+        if (controls) controls.autoRotate = isAutoRotate;
+      }
+    }
+
+    function startCameraReset() {
+      if (!camera || !controls) return;
+
+      const startOffset = camera.position.clone().sub(controls.target);
+      const startSpherical = new THREE.Spherical().setFromVector3(startOffset);
+
+      const endPos = getDefaultCamPos();
+      const endOffset = endPos.clone().sub(DEFAULT_TARGET);
+      const endSpherical = new THREE.Spherical().setFromVector3(endOffset);
+
+      // Always rotate along the shortest horizontal arc
+      let deltaTheta = endSpherical.theta - startSpherical.theta;
+      deltaTheta = Math.atan2(Math.sin(deltaTheta), Math.cos(deltaTheta));
+
+      resetState = {
+        startTime: performance.now(),
+        duration: 550,
+        startTarget: controls.target.clone(),
+        startRadius: startSpherical.radius,
+        startPhi: startSpherical.phi,
+        startTheta: startSpherical.theta,
+        endRadius: endSpherical.radius,
+        endPhi: endSpherical.phi,
+        deltaTheta
+      };
+
+      // Temporarily pause auto-rotate so it does not fight the reset animation
+      controls.autoRotate = false;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (resetState && camera && controls) {
+        const elapsed = performance.now() - resetState.startTime;
+        const t = Math.min(elapsed / resetState.duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3); // Ease-out cubic
+
+        controls.target.lerpVectors(resetState.startTarget, DEFAULT_TARGET, ease);
+
+        const currentSpherical = new THREE.Spherical(
+          THREE.MathUtils.lerp(resetState.startRadius, resetState.endRadius, ease),
+          THREE.MathUtils.lerp(resetState.startPhi, resetState.endPhi, ease),
+          resetState.startTheta + resetState.deltaTheta * ease
+        );
+        const offset = new THREE.Vector3().setFromSpherical(currentSpherical);
+        camera.position.copy(controls.target).add(offset);
+
+        if (t >= 1) {
+          resetState = null;
+          controls.autoRotate = isAutoRotate;
+        }
+      }
+
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    /* =========================================================================
+       6. VIEWER CONTROL BUTTONS
+       ========================================================================= */
+    const btnAutoRotate = document.getElementById('btn-autorotate');
+    const btnResetCam = document.getElementById('btn-reset-cam');
+
+    btnAutoRotate.addEventListener('click', () => {
+      isAutoRotate = !isAutoRotate;
+      if (controls && !resetState) controls.autoRotate = isAutoRotate;
+
+      const t = TRANSLATIONS[currentLang];
+      setText('btn-autorotate-label', isAutoRotate ? t.autoRotateOn : t.autoRotateOff);
+
+      btnAutoRotate.classList.toggle('bg-amber-600/25', isAutoRotate);
+      btnAutoRotate.classList.toggle('text-amber-200', isAutoRotate);
+      btnAutoRotate.classList.toggle('border-amber-500/30', isAutoRotate);
+      btnAutoRotate.classList.toggle('text-stone-300', !isAutoRotate);
+      btnAutoRotate.classList.toggle('border-transparent', !isAutoRotate);
+    });
+
+    btnResetCam.addEventListener('click', () => {
+      startCameraReset();
+    });
+
+    /* =========================================================================
+       7. INITIALIZATION ON WINDOW LOAD
+       ========================================================================= */
+    window.onload = function () {
+      try {
+        applyLanguage('vi'); // Default language: Vietnamese
+        init3DViewer();
+      } catch (err) {
+        console.error('Lỗi khởi tạo 3D:', err);
+        const loadingText = document.getElementById('loading-text');
+        if (loadingText) {
+          loadingText.textContent = 'Không thể khởi tạo WebGL trên trình duyệt này.';
+        }
+      }
+    };
+  </script>
+</body>
+</html>
